@@ -21,6 +21,8 @@ ImagesWindow::ImagesWindow(const char *imagesFileName, QWidget *parent)
     readImagesFile();
     calcCenterAndAngle();
     showTransformationData();
+    cropx=0;cropy=200;
+    cropw=0;croph=546;
     nextImage = new QPushButton(this);
     nextImage->setText("Next Image");
     nextImage->setGeometry(10,10,120,30);
@@ -93,8 +95,8 @@ void ImagesWindow::showNextImage()
         centerTriangle.append(QPoint(xc-15,yc+15));
         p.drawPolygon(centerTriangle);
         p.setPen(Qt::blue);
-        p.drawRect(centerx-5,centery-20-200,10,40);
-        p.drawRect(centerx-20,centery-5-200,40,10);
+        p.drawRect(centerx-5,centery-20-cropy,10,40);
+        p.drawRect(centerx-20,centery-5-cropy,40,10);
         p.end();
         imageLabel->setPixmap(pixmap.scaled(QSize(pixmap.width()/3,pixmap.height()/3)));
         viewImage->setWidget(imageLabel);
@@ -212,24 +214,14 @@ void ImagesWindow::alignImages()
 
 void ImagesWindow::imageConverter(QImage &img, int cx, int cy, double angle)
 {
-    QMatrix matrix;
-    QPixmap pixmap(img.size().width(),img.size().height()-546);
-    QPainter p(&pixmap);
-    //p.setWindow(-centerx,-centery,pixmap.width(),pixmap.height());
-    matrix.translate(centerx-cx, centery-cy-200);
-    //matrix.rotate(angle);
-    p.setMatrix(matrix);
+    QPixmap pixmap(img.size().width(),img.size().height()-croph);
+    QPainter p;
+    p.begin(&pixmap);
+    p.translate(2*centerx-cx,2*centery-cy);
+    p.rotate(angle);
+    p.translate(-centerx,-centery-cropy);
     p.drawImage(0,0,img);
     p.end();
-    /*QPixmap pixmap1(img.size());
-    p.begin(&pixmap1);
-    p.setWindow(-centerx,-centery,pixmap1.width(),pixmap1.height());
-    matrix.reset();
-    matrix.translate(-centerx, -centery);
-    matrix.rotate(angle);
-    p.setMatrix(matrix);
-    p.drawPixmap(0,0,pixmap);
-    p.end();*/
     img = pixmap.toImage();
 }
 

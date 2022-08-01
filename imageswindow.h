@@ -24,6 +24,8 @@ protected:
     QString imagesPath;
     QString currentFileName;
     double centerx,centery;
+    int cropx,cropy;
+    int cropw,croph;
     double angle;
 protected:
     void mousePressEvent(QMouseEvent *mouse);
