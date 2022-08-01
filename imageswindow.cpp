@@ -81,16 +81,16 @@ void ImagesWindow::changeCropSet()
     cropset+=1;
     cropset%=2;
     if (cropset)
-    {
+    { // Vertical photos
         cropxSpin->setValue(586);
-        cropySpin->setValue(546);
+        cropySpin->setValue(556);
         cropwSpin->setValue(1162);
-        crophSpin->setValue(1092);
-    } else {
-        cropxSpin->setValue(0);
-        cropySpin->setValue(200);
-        cropwSpin->setValue(0);
-        crophSpin->setValue(546);
+        crophSpin->setValue(1095);
+    } else { // Horizontal photos
+        cropxSpin->setValue(200);
+        cropySpin->setValue(210);
+        cropwSpin->setValue(400);
+        crophSpin->setValue(765);
         updateCrops();
     }
 }
