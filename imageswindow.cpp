@@ -21,8 +21,7 @@ ImagesWindow::ImagesWindow(const char *imagesFileName, QWidget *parent)
     readImagesFile();
     calcCenterAndAngle();
     showTransformationData();
-    cropx=0;cropy=200;
-    cropw=0;croph=546;
+
     nextImage = new QPushButton(this);
     nextImage->setText("Next Image");
     nextImage->setGeometry(10,10,120,30);
@@ -32,21 +31,76 @@ ImagesWindow::ImagesWindow(const char *imagesFileName, QWidget *parent)
     alignAllImages = new QPushButton(this);
     alignAllImages->setText("Align Images");
     alignAllImages->setGeometry(350,10,150,30);
+
+    zoom = 3;
+    referenceAngle = 0.0;
+    zoomText = new QLabel(this);
+    zoomText->setText("Zoom:");
+    zoomText->setGeometry(700,10,100,30);
+    zoomSelect = new QSpinBox(this);
+    zoomSelect->setMinimum(1);
+    zoomSelect->setMaximum(5);
+    zoomSelect->setValue(zoom);
+    zoomSelect->setGeometry(805,10,40,30);
+
+    cropText = new QLabel(this);
+    cropText->setText("Crops:");
+    cropText->setGeometry(860,10,50,30);
+    cropxSpin = new QSpinBox(this);
+    cropxSpin->setRange(0,1500);
+    cropxSpin->setGeometry(915,10,80,30);
+    cropySpin = new QSpinBox(this);
+    cropySpin->setRange(0,1500);
+    cropySpin->setGeometry(1000,10,80,30);
+    cropwSpin = new QSpinBox(this);
+    cropwSpin->setRange(0,1500);
+    cropwSpin->setGeometry(1085,10,80,30);
+    crophSpin = new QSpinBox(this);
+    crophSpin->setRange(0,1500);
+    crophSpin->setGeometry(1170,10,80,30);
+    cropSet = new QPushButton(this);
+    cropSet->setText("Change Crops");
+    cropSet->setGeometry(1260,10,100,30);
+    cropset = 1;
+    changeCropSet();
+
     currentIndex = -1;
     mousePressCounter = 0;
     connect(nextImage,SIGNAL(clicked()),this,SLOT(showNextImage()));
     connect(savePoints,SIGNAL(clicked()), this,SLOT(saveReferencePoints()));
     connect(alignAllImages,SIGNAL(clicked()),this,SLOT(alignImages()));
+    connect(zoomSelect,SIGNAL(valueChanged(int)),this,SLOT(changeZoom(int)));
+    connect(cropSet,SIGNAL(clicked()),this,SLOT(changeCropSet()));
     setFixedSize(1600,1000);
     viewImage = new QScrollArea(this);
     viewImage->setGeometry(0,50,1600,950);
 }
 
+void ImagesWindow::changeCropSet()
+{
+    cropset+=1;
+    cropset%=2;
+    if (cropset)
+    {
+        cropxSpin->setValue(586);
+        cropySpin->setValue(546);
+        cropwSpin->setValue(1162);
+        crophSpin->setValue(1092);
+    } else {
+        cropxSpin->setValue(0);
+        cropySpin->setValue(200);
+        cropwSpin->setValue(0);
+        crophSpin->setValue(546);
+        updateCrops();
+    }
+}
+
 void ImagesWindow::mousePressEvent(QMouseEvent *mouse)
 {
     if (currentIndex<0) return;
-    int x = (mouse->x()+viewImage->horizontalScrollBar()->value())*3;
-    int y = (mouse->y()-viewImage->y()+viewImage->verticalScrollBar()->value())*3;
+    if (mouse->y()<50) return;
+    int x = (mouse->x()+viewImage->horizontalScrollBar()->value())*zoom;
+    int y = (mouse->y()-viewImage->y()+viewImage->verticalScrollBar()->value())*zoom;
     QStringList tempList;
     tempList = imageReperCoordinates.at(currentIndex);
     tempList.replace(mousePressCounter*2+1,QString::number(x));
@@ -54,6 +108,14 @@ void ImagesWindow::mousePressEvent(QMouseEvent *mouse)
     imageReperCoordinates.replace(currentIndex,tempList);
     mousePressCounter++;
     mousePressCounter%=2;
+    currentIndex-=1;
+    showNextImage();
+}
+
+void ImagesWindow::changeZoom(int value)
+{
+    zoom=value;
+    if (currentIndex<0) return;
     currentIndex-=1;
     showNextImage();
 }
@@ -68,6 +130,7 @@ void ImagesWindow::showNextImage()
     imageName = imagesPath+"/"+imageReperCoordinates.at(currentIndex).at(0);
     if (img.load(imageName)) {
         int x1,y1,x2,y2,xc,yc;
+        updateCrops();
         imageLabel = new QLabel;
         QPixmap pixmap = QPixmap::fromImage(img);
         QPainter p(&pixmap);
@@ -95,10 +158,10 @@ void ImagesWindow::showNextImage()
         centerTriangle.append(QPoint(xc-15,yc+15));
         p.drawPolygon(centerTriangle);
         p.setPen(Qt::blue);
-        p.drawRect(centerx-5,centery-20-cropy,10,40);
-        p.drawRect(centerx-20,centery-5-cropy,40,10);
+        p.drawRect(centerx-5-cropx,centery-20-cropy,10,40);
+        p.drawRect(centerx-20-cropx,centery-5-cropy,40,10);
         p.end();
-        imageLabel->setPixmap(pixmap.scaled(QSize(pixmap.width()/3,pixmap.height()/3)));
+        imageLabel->setPixmap(pixmap.scaled(QSize(pixmap.width()/zoom,pixmap.height()/zoom)));
         viewImage->setWidget(imageLabel);
     }
 }
@@ -181,15 +244,27 @@ void ImagesWindow::showTransformationData()
     }
 }
 
+void ImagesWindow::updateCrops()
+{
+    cropx = cropxSpin->value();
+    cropy = cropySpin->value();
+    cropw = cropwSpin->value();
+    croph = crophSpin->value();
+}
+
 void ImagesWindow::alignImages()
 {
     double cx,cy;
     double dx,dy;
+    double angle;
     QString imageName, alignImageName;
+    calcCenterAndAngle();
     const char* alignedImagesPath = "/tmp/alignedImages/";
-    QDir alignPath;
+    QDir alignPath(alignedImagesPath);
+    alignPath.removeRecursively();
     alignPath.mkpath(alignedImagesPath);
     int alignedImagesCounter=0;
+    updateCrops();
     for (int i=0;i<imageReperCoordinates.size();++i)
     {
         cx = (imageReperCoordinates.at(i).at(1).toInt()+imageReperCoordinates.at(i).at(3).toInt())/2.0;
@@ -202,7 +277,15 @@ void ImagesWindow::alignImages()
         QImage img;
         if (img.load(imageName)) {
             QSize imgSize = img.size();
-            imageConverter(img, cx,cy,-(180.0/M_PI)*atan(dy/dx));
+            if (fabs(dx)>fabs(dy)) {
+                angle = -(180.0/M_PI)*atan(dy/dx);
+                referenceAngle=0.0;
+            }
+            else {
+                angle = -(180.0/M_PI)*atan2(dy,dx);
+                referenceAngle=90.0;
+            }
+            imageConverter(img, cx,cy, angle);
             if (img.save(alignImageName,"jpg",80)) {
                 alignedImagesCounter++;
                 qDebug() << alignImageName << " saved";
@@ -214,12 +297,12 @@ void ImagesWindow::alignImages()
 
 void ImagesWindow::imageConverter(QImage &img, int cx, int cy, double angle)
 {
-    QPixmap pixmap(img.size().width(),img.size().height()-croph);
+    QPixmap pixmap(img.size().width()-cropw,img.size().height()-croph);
     QPainter p;
     p.begin(&pixmap);
     p.translate(2*centerx-cx,2*centery-cy);
-    p.rotate(angle);
-    p.translate(-centerx,-centery-cropy);
+    p.rotate(angle+referenceAngle);
+    p.translate(-centerx-cropx,-centery-cropy);
     p.drawImage(0,0,img);
     p.end();
     img = pixmap.toImage();
