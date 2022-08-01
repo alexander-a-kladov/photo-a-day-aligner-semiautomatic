@@ -1,5 +1,6 @@
 #include "imageswindow.h"
 #include <QFile>
+#include <QDir>
 #include <QTextStream>
 #include <QDebug>
 #include <QTransform>
@@ -64,17 +65,33 @@ void ImagesWindow::showNextImage()
     QString imageName;
     imageName = imagesPath+"/"+imageReperCoordinates.at(currentIndex).at(0);
     if (img.load(imageName)) {
+        int x1,y1,x2,y2,xc,yc;
         imageLabel = new QLabel;
         QPixmap pixmap = QPixmap::fromImage(img);
         QPainter p(&pixmap);
-        p.setBrush(QBrush(Qt::red));
         QFont font = p.font();
         font.setPointSize(144);
         p.setFont(font);
         p.setPen(Qt::green);
         p.drawText(QRect(img.size().width()/2,200,400,200),QString::number(currentIndex+1));
-        p.drawEllipse(imageReperCoordinates.at(currentIndex).at(1).toInt()-10, imageReperCoordinates.at(currentIndex).at(2).toInt()-10,20,20);
-        p.drawRect(imageReperCoordinates.at(currentIndex).at(3).toInt()-10, imageReperCoordinates.at(currentIndex).at(4).toInt()-10,20,20);
+        x1 = imageReperCoordinates.at(currentIndex).at(1).toInt();
+        y1 = imageReperCoordinates.at(currentIndex).at(2).toInt();
+        x2 = imageReperCoordinates.at(currentIndex).at(3).toInt();
+        y2 = imageReperCoordinates.at(currentIndex).at(4).toInt();
+        p.save();
+        p.setPen(QPen(Qt::black,6));
+        p.drawLine(x1,y1,x2,y2);
+        p.restore();
+        p.setBrush(QBrush(Qt::red));
+        p.drawEllipse(x1-10,y1-10,20,20);
+        p.drawRect(x2-10,y2-10,20,20);
+        xc = (x1+x2)/2;
+        yc = (y1+y2)/2;
+        QPolygon centerTriangle;
+        centerTriangle.append(QPoint(xc-15,yc-15));
+        centerTriangle.append(QPoint(xc+15,yc));
+        centerTriangle.append(QPoint(xc-15,yc+15));
+        p.drawPolygon(centerTriangle);
         p.setPen(Qt::blue);
         p.drawRect(centerx-5,centery-20-200,10,40);
         p.drawRect(centerx-20,centery-5-200,40,10);
@@ -167,6 +184,10 @@ void ImagesWindow::alignImages()
     double cx,cy;
     double dx,dy;
     QString imageName, alignImageName;
+    const char* alignedImagesPath = "/tmp/alignedImages/";
+    QDir alignPath;
+    alignPath.mkpath(alignedImagesPath);
+    int alignedImagesCounter=0;
     for (int i=0;i<imageReperCoordinates.size();++i)
     {
         cx = (imageReperCoordinates.at(i).at(1).toInt()+imageReperCoordinates.at(i).at(3).toInt())/2.0;
@@ -174,16 +195,19 @@ void ImagesWindow::alignImages()
         dx = (imageReperCoordinates.at(i).at(1).toInt()-imageReperCoordinates.at(i).at(3).toInt());
         dy = (imageReperCoordinates.at(i).at(2).toInt()-imageReperCoordinates.at(i).at(4).toInt());
         imageName = imagesPath+"/"+imageReperCoordinates.at(i).at(0);
-        alignImageName = "/tmp/alignedImages/"+imageReperCoordinates.at(i).at(0);
+        alignImageName = alignedImagesPath+imageReperCoordinates.at(i).at(0);
         qDebug() << "imageName = " << imageName;
         QImage img;
         if (img.load(imageName)) {
             QSize imgSize = img.size();
             imageConverter(img, cx,cy,-(180.0/M_PI)*atan(dy/dx));
-            if (img.save(alignImageName,"jpg",80))
+            if (img.save(alignImageName,"jpg",80)) {
+                alignedImagesCounter++;
                 qDebug() << alignImageName << " saved";
+            }
         }
     }
+    QMessageBox::information(this,"Aligned Images", QString::number(alignedImagesCounter)+QString(" Saved in %1").arg(alignedImagesPath));
 }
 
 void ImagesWindow::imageConverter(QImage &img, int cx, int cy, double angle)
