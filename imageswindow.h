@@ -14,7 +14,7 @@ class ImagesWindow : public QMainWindow
 {
     Q_OBJECT
 public:
-    ImagesWindow(const char *imagesFileName, QWidget *parent = nullptr);
+    ImagesWindow(const char *imagesFileName, unsigned int firstIndex=0, QWidget *parent = nullptr);
     ~ImagesWindow();
 protected:
     void readImagesFile();
@@ -33,12 +33,13 @@ protected:
     double referenceAngle;
 protected:
     void mousePressEvent(QMouseEvent *mouse);
+    void showImage();
     int mousePressCounter;
     QLabel *cropText;
     QLabel *zoomText;
     QSpinBox *zoomSelect;
     QSpinBox *cropxSpin,*cropySpin,*cropwSpin,*crophSpin;
-    QPushButton *nextImage;
+    QPushButton *nextImage, *prevImage;
     QPushButton *savePoints;
     QPushButton *alignAllImages;
     QPushButton *cropSet;
@@ -48,6 +49,7 @@ protected:
     int zoom;
 protected slots:
     void showNextImage();
+    void showPrevImage();
     void saveReferencePoints();
     void alignImages();
     void changeCropSet();

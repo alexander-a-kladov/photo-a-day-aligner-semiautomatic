@@ -14,7 +14,7 @@
 
 using namespace std;
 
-ImagesWindow::ImagesWindow(const char *imagesFileName, QWidget *parent)
+ImagesWindow::ImagesWindow(const char *imagesFileName, unsigned int firstIndex, QWidget *parent)
     : QMainWindow(parent)
 {
     currentFileName = imagesFileName;
@@ -25,12 +25,15 @@ ImagesWindow::ImagesWindow(const char *imagesFileName, QWidget *parent)
     nextImage = new QPushButton(this);
     nextImage->setText("Next Image");
     nextImage->setGeometry(10,10,120,30);
+    prevImage = new QPushButton(this);
+    prevImage->setText("Prev Image");
+    prevImage->setGeometry(150,10,120,30);
     savePoints = new QPushButton(this);
     savePoints->setText("Save Points");
-    savePoints->setGeometry(150,10,150,30);
+    savePoints->setGeometry(300,10,150,30);
     alignAllImages = new QPushButton(this);
     alignAllImages->setText("Align Images");
-    alignAllImages->setGeometry(350,10,150,30);
+    alignAllImages->setGeometry(500,10,150,30);
 
     zoom = 3;
     referenceAngle = 0.0;
@@ -64,9 +67,13 @@ ImagesWindow::ImagesWindow(const char *imagesFileName, QWidget *parent)
     cropset = 1;
     changeCropSet();
 
-    currentIndex = -1;
+    if (!firstIndex)
+        currentIndex = 0;
+    else
+        currentIndex = firstIndex;
     mousePressCounter = 0;
     connect(nextImage,SIGNAL(clicked()),this,SLOT(showNextImage()));
+    connect(prevImage,SIGNAL(clicked()),this,SLOT(showPrevImage()));
     connect(savePoints,SIGNAL(clicked()), this,SLOT(saveReferencePoints()));
     connect(alignAllImages,SIGNAL(clicked()),this,SLOT(alignImages()));
     connect(zoomSelect,SIGNAL(valueChanged(int)),this,SLOT(changeZoom(int)));
@@ -74,6 +81,7 @@ ImagesWindow::ImagesWindow(const char *imagesFileName, QWidget *parent)
     setFixedSize(1600,1000);
     viewImage = new QScrollArea(this);
     viewImage->setGeometry(0,50,1600,950);
+    showImage();
 }
 
 void ImagesWindow::changeCropSet()
@@ -91,8 +99,8 @@ void ImagesWindow::changeCropSet()
         cropySpin->setValue(210);
         cropwSpin->setValue(400);
         crophSpin->setValue(765);
-        updateCrops();
     }
+    updateCrops();
 }
 
 void ImagesWindow::mousePressEvent(QMouseEvent *mouse)
@@ -108,22 +116,32 @@ void ImagesWindow::mousePressEvent(QMouseEvent *mouse)
     imageReperCoordinates.replace(currentIndex,tempList);
     mousePressCounter++;
     mousePressCounter%=2;
-    currentIndex-=1;
-    showNextImage();
+    showImage();
 }
 
 void ImagesWindow::changeZoom(int value)
 {
     zoom=value;
     if (currentIndex<0) return;
-    currentIndex-=1;
-    showNextImage();
+    showImage();
 }
 
 void ImagesWindow::showNextImage()
 {
     currentIndex++;
     currentIndex%=imageReperCoordinates.size();
+    showImage();
+}
+
+void ImagesWindow::showPrevImage()
+{
+    currentIndex--;
+    if (currentIndex<0) currentIndex+=imageReperCoordinates.size();
+    showImage();
+}
+
+void ImagesWindow::showImage()
+{
     setWindowTitle(QString("imagesAligner %1 %2/%3").arg(imageReperCoordinates.at(currentIndex).at(0)).arg(currentIndex+1).arg(imageReperCoordinates.size()));
     QImage img;
     QString imageName;
@@ -206,6 +224,20 @@ void ImagesWindow::readImagesFile()
             if (dataList.size() == 5)
                 imageReperCoordinates.append(dataList);
         }
+        if (!imageReperCoordinates.size()) {
+            QDir dir;
+            QStringList filters;
+            filters << "*.jpg" << "*.jpeg" << "*.png" << "*.bmp";
+            dir.setPath(imagesPath);
+            dir.setNameFilters(filters);
+            dir.setSorting(QDir::Name);
+            foreach (QFileInfo file, dir.entryInfoList()) {
+                QStringList dataList;
+                dataList << file.fileName() << "0" << "0" << "0" << "0";
+                imageReperCoordinates.append(dataList);
+            }
+        }
+
         imagesFile.close();
     }
 

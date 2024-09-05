@@ -1,0 +1,7 @@
+./photos/
+IMG_2282.ppm.jpg 0 0 0 0
+IMG_2283.ppm.jpg 0 0 0 0
+IMG_2284.ppm.jpg 0 0 0 0
+IMG_2285.ppm.jpg 0 0 0 0
+IMG_2287.ppm.jpg 1041 1215 4584 1182
+IMG_2288.ppm.jpg 0 0 0 0
