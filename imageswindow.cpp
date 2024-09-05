@@ -14,7 +14,7 @@
 
 using namespace std;
 
-ImagesWindow::ImagesWindow(const char *imagesFileName, unsigned int firstIndex, QWidget *parent)
+ImagesWindow::ImagesWindow(const char *imagesFileName, unsigned int firstIndex, const char *crop_file_name, QWidget *parent)
     : QMainWindow(parent)
 {
     currentFileName = imagesFileName;
@@ -61,11 +61,14 @@ ImagesWindow::ImagesWindow(const char *imagesFileName, unsigned int firstIndex, 
     crophSpin = new QSpinBox(this);
     crophSpin->setRange(0,1500);
     crophSpin->setGeometry(1170,10,80,30);
-    cropSet = new QPushButton(this);
-    cropSet->setText("Change Crops");
-    cropSet->setGeometry(1260,10,100,30);
-    cropset = 1;
-    changeCropSet();
+
+    if (crop_file_name) {
+        cropFileName = crop_file_name;
+        loadCropFile();
+    } else {
+        cropFileName = QString("crop_").append(currentFileName);
+        if (!loadCropFile()) initCrops();
+    }
 
     if (!firstIndex)
         currentIndex = 0;
@@ -77,17 +80,14 @@ ImagesWindow::ImagesWindow(const char *imagesFileName, unsigned int firstIndex, 
     connect(savePoints,SIGNAL(clicked()), this,SLOT(saveReferencePoints()));
     connect(alignAllImages,SIGNAL(clicked()),this,SLOT(alignImages()));
     connect(zoomSelect,SIGNAL(valueChanged(int)),this,SLOT(changeZoom(int)));
-    connect(cropSet,SIGNAL(clicked()),this,SLOT(changeCropSet()));
     setFixedSize(1600,1000);
     viewImage = new QScrollArea(this);
     viewImage->setGeometry(0,50,1600,950);
     showImage();
 }
 
-void ImagesWindow::changeCropSet()
+void ImagesWindow::initCrops(int cropset)
 {
-    cropset+=1;
-    cropset%=2;
     if (cropset)
     { // Vertical photos
         cropxSpin->setValue(586);
@@ -100,7 +100,6 @@ void ImagesWindow::changeCropSet()
         cropwSpin->setValue(400);
         crophSpin->setValue(765);
     }
-    updateCrops();
 }
 
 void ImagesWindow::mousePressEvent(QMouseEvent *mouse)
@@ -126,6 +125,42 @@ void ImagesWindow::changeZoom(int value)
     showImage();
 }
 
+bool ImagesWindow::loadCropFile()
+{
+    int cx, cy, cw, ch;
+    QFile cropsFile(cropFileName);
+    qDebug() << cropFileName;
+    if (cropsFile.open(QIODevice::ReadOnly))
+    {
+        QTextStream in(&cropsFile);
+        in >> cx;
+        in >> cy;
+        in >> cw;
+        in >> ch;
+        qDebug() << cx << " " << cy << " " << cw << " " << ch;
+        cropxSpin->setValue(cx);
+        cropySpin->setValue(cy);
+        cropwSpin->setValue(cw);
+        crophSpin->setValue(ch);
+        return true;
+    }
+    return false;
+}
+
+void ImagesWindow::saveCropFile()
+{
+    QFile cropsFile(cropFileName);
+    qDebug() << cropFileName;
+    if (cropsFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    {
+        QTextStream out(&cropsFile);
+        out << cropxSpin->value() << "\n";
+        out << cropySpin->value() << "\n";
+        out << cropwSpin->value() << "\n";
+        out << crophSpin->value() << "\n";
+    }
+}
+
 void ImagesWindow::showNextImage()
 {
     currentIndex++;
@@ -148,7 +183,8 @@ void ImagesWindow::showImage()
     imageName = imagesPath+"/"+imageReperCoordinates.at(currentIndex).at(0);
     if (img.load(imageName)) {
         int x1,y1,x2,y2,xc,yc;
-        updateCrops();
+        int cropx = cropxSpin->value();
+        int cropy = cropySpin->value();
         imageLabel = new QLabel;
         QPixmap pixmap = QPixmap::fromImage(img);
         QPainter p(&pixmap);
@@ -220,7 +256,6 @@ void ImagesWindow::readImagesFile()
             imagesData = in.readLine();
             qDebug() << imagesData;
             dataList = imagesData.split(' ');
-            qDebug() << "dataList.size = " << dataList.size();
             if (dataList.size() == 5)
                 imageReperCoordinates.append(dataList);
         }
@@ -276,14 +311,6 @@ void ImagesWindow::showTransformationData()
     }
 }
 
-void ImagesWindow::updateCrops()
-{
-    cropx = cropxSpin->value();
-    cropy = cropySpin->value();
-    cropw = cropwSpin->value();
-    croph = crophSpin->value();
-}
-
 void ImagesWindow::alignImages()
 {
     double cx,cy;
@@ -296,7 +323,6 @@ void ImagesWindow::alignImages()
     alignPath.removeRecursively();
     alignPath.mkpath(alignedImagesPath);
     int alignedImagesCounter=0;
-    updateCrops();
     for (int i=0;i<imageReperCoordinates.size();++i)
     {
         cx = (imageReperCoordinates.at(i).at(1).toInt()+imageReperCoordinates.at(i).at(3).toInt())/2.0;
@@ -324,11 +350,16 @@ void ImagesWindow::alignImages()
             }
         }
     }
-    QMessageBox::information(this,"Aligned Images", QString::number(alignedImagesCounter)+QString(" Saved in %1").arg(alignedImagesPath));
+    saveCropFile();
+    QMessageBox::information(this,"Aligned Images and update CropFile", QString::number(alignedImagesCounter)+QString(" Saved in %1").arg(alignedImagesPath));
 }
 
 void ImagesWindow::imageConverter(QImage &img, int cx, int cy, double angle)
 {
+    int cropx = cropxSpin->value();
+    int cropy = cropySpin->value();
+    int cropw = cropwSpin->value();
+    int croph = crophSpin->value();
     QPixmap pixmap(img.size().width()-cropw,img.size().height()-croph);
     QPainter p;
     p.begin(&pixmap);

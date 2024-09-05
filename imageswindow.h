@@ -14,21 +14,20 @@ class ImagesWindow : public QMainWindow
 {
     Q_OBJECT
 public:
-    ImagesWindow(const char *imagesFileName, unsigned int firstIndex=0, QWidget *parent = nullptr);
+    ImagesWindow(const char *imagesFileName, unsigned int firstIndex=0, const char* crop_file_name = nullptr, QWidget *parent = nullptr);
     ~ImagesWindow();
 protected:
+    bool loadCropFile();
+    void saveCropFile();
     void readImagesFile();
+    void initCrops(int cropset=0);
     void calcCenterAndAngle();
     void showTransformationData();
     void imageConverter(QImage &img, int cx, int cy, double angle);
-    void updateCrops();
     QList<QStringList> imageReperCoordinates;
     QString imagesPath;
-    QString currentFileName;
+    QString currentFileName, cropFileName;
     double centerx,centery;
-    int cropx,cropy;
-    int cropw,croph;
-    int cropset;
     double angle;
     double referenceAngle;
 protected:
@@ -42,7 +41,6 @@ protected:
     QPushButton *nextImage, *prevImage;
     QPushButton *savePoints;
     QPushButton *alignAllImages;
-    QPushButton *cropSet;
     QScrollArea *viewImage;
     QLabel *imageLabel;
     int currentIndex;
@@ -52,7 +50,6 @@ protected slots:
     void showPrevImage();
     void saveReferencePoints();
     void alignImages();
-    void changeCropSet();
     void changeZoom(int value);
 };
 #endif // IMAGESWINDOW_H

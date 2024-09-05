@@ -7,6 +7,7 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
+    const char* crop_file_name;
     QApplication a(argc, argv);
     int currentIndex=0;
     if (argc<2) {
@@ -15,7 +16,11 @@ int main(int argc, char *argv[])
     }
     if (argc>2)
         currentIndex=atoi(argv[2])-1;
-    ImagesWindow w(argv[1],currentIndex);
+    if (argc>3)
+        crop_file_name = argv[3];
+    else
+        crop_file_name = nullptr;
+    ImagesWindow w(argv[1],currentIndex,crop_file_name);
     w.show();
     return a.exec();
 }
