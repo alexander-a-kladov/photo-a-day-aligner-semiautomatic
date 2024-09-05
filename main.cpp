@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
     if (argc>2)
-        currentIndex=atoi(argv[2]);
+        currentIndex=atoi(argv[2])-1;
     ImagesWindow w(argv[1],currentIndex);
     w.show();
     return a.exec();
